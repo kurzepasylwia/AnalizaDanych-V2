@@ -8,9 +8,6 @@ Aplikacja desktopowa napisana w Pythonie do analizy zależności między dzienn�
 
 <!-- ![Podgląd aplikacji](assets/screenshot1.png) -->
 
-<!-- ![Podgląd aplikacji](assets/screenshot2.png) -->
-
-<!-- ![Podgląd aplikacji](assets/screenshot3.png) -->
 ---
 
 ## 🔧 Technologie i biblioteki
