@@ -6,7 +6,7 @@ Aplikacja desktopowa napisana w Pythonie do analizy zależności między dzienn�
 
 ## 📸 Podgląd aplikacji
 
-<!-- ![Podgląd aplikacji](assets/screenshot1.png) -->
+![Podgląd aplikacji](assets/screenshot1.png)
 
 ---
 
