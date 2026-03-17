@@ -7,15 +7,20 @@ import numpy as np
 import os
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas as pdf_canvas
+import platform
 
 plt.style.use("seaborn-v0_8")
+
+# Weryfikacja systemu
+IS_MAC = platform.system() == "Darwin"
 
 # KOLORY
 KOLOR_TLO        = "#F0F4F8"
 KOLOR_SIDEBAR    = "#1B3A5C"
 KOLOR_HEADER     = "#1B3A5C"
 KOLOR_ACCENT     = "#2E86C1"
-KOLOR_ACCENT2    = "#27AE60"
+KOLOR_ZIELONY    = "#27AE60"
+KOLOR_CZERWONY   = "#E74C3C"
 KOLOR_BIALY      = "#FFFFFF"
 KOLOR_TEKST      = "#1A1A2E"
 KOLOR_SZARY      = "#8096A7"
@@ -25,6 +30,63 @@ KOLOR_BTN_HOVER  = "#1A6FA8"
 
 # GLOBALNA ZMIENNA
 df = None
+
+# DOSTOSOWANIE PRZYCISKU MACOS/WINDOWS
+def zrob_przycisk(parent, tekst, komenda, bg, fg="white",
+                  font_size=10, padx=14, pady=10, width=None):
+    
+    #Na macOS tkinter ignoruje bg/fg przycisków — używamy Canvas
+    #jako obejścia które działa na obu systemach.
+    
+    hover_bg = _przyciemnij(bg)
+
+    if IS_MAC:
+        # Na macOS przycisk ręcznie na Canvas
+        btn_frame = tk.Frame(parent, bg=bg, cursor="hand2")
+        lbl = tk.Label(btn_frame, text=tekst,
+                       bg=bg, fg=fg,
+                       font=("Helvetica", font_size, "bold"),
+                       padx=padx, pady=pady,
+                       cursor="hand2")
+        lbl.pack(fill="both", expand=True)
+
+        def on_enter(e):
+            btn_frame.config(bg=hover_bg)
+            lbl.config(bg=hover_bg)
+
+        def on_leave(e):
+            btn_frame.config(bg=bg)
+            lbl.config(bg=bg)
+
+        btn_frame.bind("<Button-1>", lambda e: komenda())
+        lbl.bind("<Button-1>", lambda e: komenda())
+        btn_frame.bind("<Enter>", on_enter)
+        lbl.bind("<Enter>", on_enter)
+        btn_frame.bind("<Leave>", on_leave)
+        lbl.bind("<Leave>", on_leave)
+
+        return btn_frame
+    else:
+        # Na Windows standardowy Button działa poprawnie
+        btn = tk.Button(parent, text=tekst, command=komenda,
+                        bg=bg, fg=fg,
+                        relief="flat", bd=0,
+                        font=("Helvetica", font_size, "bold"),
+                        padx=padx, pady=pady,
+                        cursor="hand2",
+                        activebackground=hover_bg,
+                        activeforeground="white")
+        return btn
+
+
+def _przyciemnij(hex_kolor):
+    #Przyciemnia kolor o 15% dla efektu hover
+    hex_kolor = hex_kolor.lstrip("#")
+    r, g, b = (int(hex_kolor[i:i+2], 16) for i in (0, 2, 4))
+    r = max(0, int(r * 0.85))
+    g = max(0, int(g * 0.85))
+    b = max(0, int(b * 0.85))
+    return f"#{r:02x}{g:02x}{b:02x}"
 
 # WCZYTANIE PLIKU CSV
 def wczytaj_plik():
@@ -51,7 +113,13 @@ def pobierz_przefiltrowane():
     if wybrana_plec != "Wszyscy":
         wynik = wynik[wynik["Gender"] == wybrana_plec]
 
-    wynik["BMI Category"] = wynik["BMI Category"].replace({"Normal Weight": "Normal"})
+    # Tłumaczenie BMI na polski
+    wynik["BMI Category"] = wynik["BMI Category"].replace({
+        "Normal Weight": "Prawidłowa",
+        "Normal":        "Prawidłowa",
+        "Overweight":    "Nadwaga",
+        "Obese":         "Otyłość"
+    })
     return wynik
 
 # STYL WYKRESÓW
@@ -113,7 +181,7 @@ def rysuj_wykresy_glowne(przefiltrowane, kontener):
     stylizuj_osie(axs)
 
     kolory     = {"Male": "#2E86C1", "Female": "#E05C7A"}
-    kolory_bmi = {"Normal": "#27AE60", "Overweight": "#F39C12", "Obese": "#E74C3C"}
+    kolory_bmi = {"Prawidłowa": "#27AE60", "Nadwaga": "#F39C12", "Otyłość": "#E74C3C"}
 
     # Wykres 1: Scatter kroków vs jakość snu
     for plec in przefiltrowane["Gender"].unique():
@@ -134,7 +202,7 @@ def rysuj_wykresy_glowne(przefiltrowane, kontener):
     axs[0].grid(True, alpha=0.25, linestyle="--", color=KOLOR_BORDER)
 
     # Wykres 2: Średnia kroków wg BMI
-    kolejnosc  = [k for k in ["Normal", "Overweight", "Obese"]
+    kolejnosc  = [k for k in ["Prawdiłowa", "Nadwaga", "Otyłość"]
                   if k in przefiltrowane["BMI Category"].unique()]
     srednie_bmi = przefiltrowane.groupby("BMI Category")["Daily Steps"].mean().reindex(kolejnosc)
     bars = axs[1].bar(srednie_bmi.index, srednie_bmi.values,
@@ -225,8 +293,8 @@ def porownaj_grupy():
     axs[1].set_ylabel("Jakość snu (1–10)", color=KOLOR_SZARY, fontsize=9)
 
     # Wykres 3: Kroki wg BMI i płci
-    kolory_bmi  = {"Normal": "#27AE60", "Overweight": "#F39C12", "Obese": "#E74C3C"}
-    kolejnosc   = [k for k in ["Normal", "Overweight", "Obese"]
+    kolory_bmi  = {"Prawidłowa": "#27AE60", "Nadwaga": "#F39C12", "Otyłość": "#E74C3C"}
+    kolejnosc   = [k for k in ["Prawidłowa", "Nadwaga", "Otyłość"]
                    if k in dane["BMI Category"].unique()]
     bmi_plec    = dane.groupby(["BMI Category", "Gender"])["Daily Steps"].mean().unstack()
     bmi_plec    = bmi_plec.reindex(kolejnosc)
@@ -288,8 +356,8 @@ def eksportuj_raport():
  
     # Generowanie wykresu do PDF
     fig, axs = plt.subplots(1, 2, figsize=(10, 4))
-    kolory_bmi  = {"Normal": "#27AE60", "Overweight": "#F39C12", "Obese": "#E74C3C"}
-    kolejnosc   = [k for k in ["Normal", "Overweight", "Obese"]
+    kolory_bmi  = {"Prawidłowa": "#27AE60", "Nadwaga": "#F39C12", "Otyłość": "#E74C3C"}
+    kolejnosc   = [k for k in ["Prawidłowa", "Nadwaga", "Otyłość"]
                    if k in przefiltrowane["BMI Category"].unique()]
     kolory_sc   = {"Male": "#2E86C1", "Female": "#E05C7A"}
 
@@ -298,16 +366,16 @@ def eksportuj_raport():
         axs[0].scatter(d["Daily Steps"], d["Quality of Sleep"],
                        color=kolory_sc.get(plec, "#999"),
                        alpha=0.6, s=28, label=plec)
-    axs[0].set_title("Kroki vs Jakosc snu")
+    axs[0].set_title("Kroki vs Jakość snu")
     axs[0].set_xlabel("Kroki dziennie")
-    axs[0].set_ylabel("Jakosc snu")
+    axs[0].set_ylabel("Jakość snu")
     axs[0].legend(fontsize=8)
 
     sr_bmi = przefiltrowane.groupby("BMI Category")["Daily Steps"].mean().reindex(kolejnosc)
     axs[1].bar(sr_bmi.index, sr_bmi.values,
                color=[kolory_bmi.get(k, "#999") for k in kolejnosc],
                edgecolor="white")
-    axs[1].set_title("Srednia liczba krokow wg BMI")
+    axs[1].set_title("Średnia liczba kroków wg BMI")
     axs[1].set_ylabel("Kroki")
 
     plt.tight_layout()
@@ -325,21 +393,21 @@ def eksportuj_raport():
     c.setFont("Helvetica-Bold", 16)
     c.drawString(50, H - 45, "Raport analizy danych medycznych")
     c.setFont("Helvetica", 10)
-    c.drawString(50, H - 65, "Analiza: dzienna liczba krokow vs BMI i jakosc snu")
+    c.drawString(50, H - 65, "Analiza: dzienna liczba kroków vs BMI i jakość snu")
 
     c.setFillColorRGB(0.106, 0.227, 0.361)
     c.setFont("Helvetica-Bold", 13)
-    c.drawString(50, H - 115, "Statystyki ogolne")
+    c.drawString(50, H - 115, "Statystyki ogólne")
 
     c.setFillColorRGB(0.2, 0.2, 0.2)
     c.setFont("Helvetica", 11)
 
     statystyki = [
         f"Filtry: Wiek {entry_wiek_min.get()}-{entry_wiek_max.get()} lat,  Plec: {var_plec.get()}",
-        f"Liczba pacjentow: {len(przefiltrowane)}",
-        f"Srednia liczba krokow: {przefiltrowane['Daily Steps'].mean():.0f} krokow/dzien",
-        f"Srednia jakosc snu: {przefiltrowane['Quality of Sleep'].mean():.2f} / 10",
-        f"Mediana jakosci snu: {przefiltrowane['Quality of Sleep'].median():.1f}",
+        f"Liczba pacjentów: {len(przefiltrowane)}",
+        f"Średnia liczba kroków: {przefiltrowane['Daily Steps'].mean():.0f} krokow/dzien",
+        f"Średnia jakość snu: {przefiltrowane['Quality of Sleep'].mean():.2f} / 10",
+        f"Mediana jakości snu: {przefiltrowane['Quality of Sleep'].median():.1f}",
         f"Min. kroki: {przefiltrowane['Daily Steps'].min():.0f}   |   Max: {przefiltrowane['Daily Steps'].max():.0f}",
     ]
     y = H - 140
@@ -349,13 +417,13 @@ def eksportuj_raport():
 
     c.setFillColorRGB(0.106, 0.227, 0.361)
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(50, y - 10, "Srednie kroki wg BMI:")
+    c.drawString(50, y - 10, "Średnie kroki wg BMI:")
     y -= 30
     c.setFont("Helvetica", 10)
     c.setFillColorRGB(0.2, 0.2, 0.2)
     for kat in kolejnosc:
         sr = przefiltrowane[przefiltrowane["BMI Category"] == kat]["Daily Steps"].mean()
-        c.drawString(70, y, f"{kat}: {sr:.0f} krokow/dzien")
+        c.drawString(70, y, f"{kat}: {sr:.0f} kroków/dzień")
         y -= 18
 
     c.drawImage(wykres_path, 40, y - 255, width=510, height=235)
@@ -387,7 +455,7 @@ header_frame.pack(fill="x")
 header_frame.pack_propagate(False)
 
 tk.Label(header_frame,
-         text="🏥  System Analizy Danych Medycznych",
+         text="🏥  SYSTEM ANALIZY DANYCH MEDYCZNYCH",
          font=("Helvetica", 17, "bold"),
          bg=KOLOR_HEADER, fg="white").pack(side="left", padx=28, pady=18)
 
@@ -413,15 +481,8 @@ tk.Label(sidebar, text="FILTRY DANYCH",
 tk.Frame(sidebar, bg="#2E5F8A", height=1).pack(fill="x", padx=16, pady=4)
 
 # Wczytaj plik
-btn_wczytaj = tk.Button(sidebar, text="📂  Wczytaj plik CSV",
-                         command=wczytaj_plik,
-                         bg="#2E86C1", fg="white",
-                         relief="flat", bd=0,
-                         font=("Helvetica", 10, "bold"),
-                         padx=14, pady=10,
-                         cursor="hand2",
-                         activebackground="#1A6FA8",
-                         activeforeground="white")
+btn_wczytaj = zrob_przycisk(sidebar, "📂  Wczytaj plik CSV",
+                              wczytaj_plik, bg="#2E86C1")
 btn_wczytaj.pack(fill="x", padx=16, pady=(10, 4))
 
 label_plik = tk.Label(sidebar, text="Brak pliku",
@@ -460,28 +521,47 @@ entry_wiek_max.pack(padx=16, pady=(0, 8), fill="x")
 tk.Label(sidebar, text="Płeć:",
          font=("Helvetica", 9, "bold"),
          bg=KOLOR_SIDEBAR, fg="#BDD7EE").pack(padx=20, pady=(4, 2), anchor="w")
+
+style_combo = ttk.Style()
+style_combo.theme_use("default")
+style_combo.configure("Sidebar.TCombobox",
+                       fieldbackground="#243F5C",
+                       background="#243F5C",
+                       foreground="white",
+                       selectbackground="#2E86C1",
+                       selectforeground="white",
+                       bordercolor="#2E5F8A",
+                       arrowcolor="white",
+                       padding=6)
+style_combo.map("Sidebar.TCombobox",
+                fieldbackground=[("readonly", "#243F5C")],
+                foreground=[("readonly", "white")])
+
 var_plec = tk.StringVar(value="Wszyscy")
-option_plec = tk.OptionMenu(sidebar, var_plec, "Wszyscy", "Male", "Female")
-option_plec.config(bg="#243F5C", fg="white", relief="flat",
-                   font=("Helvetica", 10), width=14,
-                   activebackground="#2E86C1",
-                   highlightthickness=0)
-option_plec["menu"].config(bg="#243F5C", fg="white")
+option_plec = ttk.Combobox(sidebar, textvariable=var_plec,
+                            values=["Wszyscy", "Male", "Female"],
+                            state="readonly",
+                            style="Sidebar.TCombobox",
+                            font=("Helvetica", 10))
 option_plec.pack(padx=16, pady=(0, 14), fill="x")
+option_plec.bind("<<ComboboxSelected>>", lambda e: option_plec.selection_clear())
 
 tk.Frame(sidebar, bg="#2E5F8A", height=1).pack(fill="x", padx=16, pady=4)
 
 # Przycisk filtruj
-btn_filtruj = tk.Button(sidebar, text="🔍  Filtruj i analizuj",
-                         command=filtruj_dane,
-                         bg="#27AE60", fg="white",
-                         relief="flat", bd=0,
-                         font=("Helvetica", 10, "bold"),
-                         padx=14, pady=10,
-                         cursor="hand2",
-                         activebackground="#1E8449",
-                         activeforeground="white")
+btn_filtruj = zrob_przycisk(sidebar, "🔍  Filtruj i analizuj",
+                              filtruj_dane, bg=KOLOR_ZIELONY)
 btn_filtruj.pack(fill="x", padx=16, pady=(10, 6))
+
+label_status = tk.Label(sidebar, text="",
+                          font=("Helvetica", 8),
+                          bg=KOLOR_SIDEBAR, fg="#7FB3D3",
+                          wraplength=190)
+label_status.pack(padx=16, pady=4, anchor="w")
+
+tk.Label(sidebar, text="v1.0  |  Python + tkinter",
+         font=("Helvetica", 7),
+         bg=KOLOR_SIDEBAR, fg="#4A7FA8").pack(side="bottom", pady=14)
 
 # Status
 label_status = tk.Label(sidebar, text="",
@@ -555,15 +635,9 @@ frame_wykres_analiza.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 tab_porownanie = tk.Frame(notebook, bg=KOLOR_TLO)
 notebook.add(tab_porownanie, text="  👥  Porównanie grup  ")
 
-btn_porownaj = tk.Button(tab_porownanie,
-                          text="▶  Wygeneruj porównanie grup",
-                          command=porownaj_grupy,
-                          bg=KOLOR_ACCENT, fg="white",
-                          relief="flat", bd=0,
-                          font=("Helvetica", 10, "bold"),
-                          padx=20, pady=10,
-                          cursor="hand2",
-                          activebackground=KOLOR_BTN_HOVER)
+btn_porownaj = zrob_przycisk(tab_porownanie, "▶  Wygeneruj porównanie grup",
+                              porownaj_grupy, bg=KOLOR_ACCENT,
+                              padx=20, pady=10)
 btn_porownaj.pack(pady=(16, 8))
 
 tk.Label(tab_porownanie,
@@ -603,20 +677,14 @@ tk.Label(info_box,
          bg="#EBF5FB", fg="#1B4F72",
          justify="left").pack(padx=16, pady=12)
 
-btn_eksport = tk.Button(frame_eksport_center,
-                         text="💾  Eksportuj CSV + PDF",
-                         command=eksportuj_raport,
-                         bg="#E74C3C", fg="white",
-                         relief="flat", bd=0,
-                         font=("Helvetica", 12, "bold"),
-                         padx=32, pady=14,
-                         cursor="hand2",
-                         activebackground="#C0392B")
+btn_eksport = zrob_przycisk(frame_eksport_center, "💾  Eksportuj CSV + PDF",
+                             eksportuj_raport, bg=KOLOR_CZERWONY,
+                             font_size=12, padx=32, pady=14)
 btn_eksport.pack()
 
 label_status_eksport = tk.Label(frame_eksport_center, text="",
                                   font=("Helvetica", 10),
-                                  bg=KOLOR_TLO, fg="#27AE60")
+                                  bg=KOLOR_TLO, fg=KOLOR_ZIELONY)
 label_status_eksport.pack(pady=16)
 
 root.mainloop()
