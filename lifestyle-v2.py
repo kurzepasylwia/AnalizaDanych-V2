@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 import numpy as np
 import os
 from reportlab.lib.pagesizes import A4
@@ -382,79 +382,241 @@ root.geometry("1200x740")
 root.minsize(1100, 680)
 
 # NAGŁÓWEK
-header = tk.Label(
-    root,
-    text="Analiza kroków dziennych, BMI i jakości snu",
-    font=("Arial", 18, "bold"),
-    bg="#2C3E50", fg="white", pady=15
-)
-header.pack(fill="x")
+header_frame = tk.Frame(root, bg=KOLOR_HEADER, height=64)
+header_frame.pack(fill="x")
+header_frame.pack_propagate(False)
 
-# PANEL FORMULARZA
-frame_form = tk.Frame(root, bg="#ecf0f1")
-frame_form.pack(pady=15)
+tk.Label(header_frame,
+         text="🏥  System Analizy Danych Medycznych",
+         font=("Helvetica", 17, "bold"),
+         bg=KOLOR_HEADER, fg="white").pack(side="left", padx=28, pady=18)
 
-# Etykiety - wiersz 0
-tk.Label(frame_form, text="Wiek od:", font=("Arial", 9),
-         bg="#ecf0f1", fg="#333333").grid(row=0, column=1, padx=5)
-tk.Label(frame_form, text="Wiek do:", font=("Arial", 9),
-         bg="#ecf0f1", fg="#333333").grid(row=0, column=2, padx=5)
-tk.Label(frame_form, text="Płeć:", font=("Arial", 9),
-         bg="#ecf0f1", fg="#333333").grid(row=0, column=3, padx=5)
+tk.Label(header_frame,
+         text="Kroki dzienne  ·  BMI  ·  Jakość snu",
+         font=("Helvetica", 10),
+         bg=KOLOR_HEADER, fg="#A8C8E8").pack(side="right", padx=28, pady=18)
 
-# Przyciski i pola - wiersz 1
-btn_wczytaj = tk.Button(
-    frame_form, text="Wczytaj CSV", command=wczytaj_plik,
-    bg="#3498db", fg="white", relief="flat", padx=12, pady=8
-)
-btn_wczytaj.grid(row=1, column=0, padx=6)
+# GŁÓWNY OBSZAR
+main_frame = tk.Frame(root, bg=KOLOR_TLO)
+main_frame.pack(fill="both", expand=True)
 
-entry_wiek_min = tk.Entry(frame_form, justify="center", width=7)
+# SIDEBAR
+sidebar = tk.Frame(main_frame, bg=KOLOR_SIDEBAR, width=230)
+sidebar.pack(side="left", fill="y")
+sidebar.pack_propagate(False)
+
+tk.Label(sidebar, text="FILTRY DANYCH",
+         font=("Helvetica", 9, "bold"),
+         bg=KOLOR_SIDEBAR, fg="#7FB3D3").pack(pady=(24, 6), padx=20, anchor="w")
+
+# SEPARATOR
+tk.Frame(sidebar, bg="#2E5F8A", height=1).pack(fill="x", padx=16, pady=4)
+
+# Wczytaj plik
+btn_wczytaj = tk.Button(sidebar, text="📂  Wczytaj plik CSV",
+                         command=wczytaj_plik,
+                         bg="#2E86C1", fg="white",
+                         relief="flat", bd=0,
+                         font=("Helvetica", 10, "bold"),
+                         padx=14, pady=10,
+                         cursor="hand2",
+                         activebackground="#1A6FA8",
+                         activeforeground="white")
+btn_wczytaj.pack(fill="x", padx=16, pady=(10, 4))
+
+label_plik = tk.Label(sidebar, text="Brak pliku",
+                       font=("Helvetica", 8),
+                       bg=KOLOR_SIDEBAR, fg="#7FB3D3",
+                       wraplength=190)
+label_plik.pack(padx=16, pady=(0, 12), anchor="w")
+
+tk.Frame(sidebar, bg="#2E5F8A", height=1).pack(fill="x", padx=16, pady=4)
+
+# Wiek - od
+tk.Label(sidebar, text="Wiek od:",
+         font=("Helvetica", 9, "bold"),
+         bg=KOLOR_SIDEBAR, fg="#BDD7EE").pack(padx=20, pady=(12, 2), anchor="w")
+entry_wiek_min = tk.Entry(sidebar, justify="center", width=16,
+                           font=("Helvetica", 11),
+                           bg="#243F5C", fg="white",
+                           insertbackground="white",
+                           relief="flat", bd=6)
 entry_wiek_min.insert(0, "27")
-entry_wiek_min.grid(row=1, column=1, padx=5)
+entry_wiek_min.pack(padx=16, pady=(0, 8), fill="x")
 
-entry_wiek_max = tk.Entry(frame_form, justify="center", width=7)
+# Wiek - do
+tk.Label(sidebar, text="Wiek do:",
+         font=("Helvetica", 9, "bold"),
+         bg=KOLOR_SIDEBAR, fg="#BDD7EE").pack(padx=20, pady=(4, 2), anchor="w")
+entry_wiek_max = tk.Entry(sidebar, justify="center", width=16,
+                           font=("Helvetica", 11),
+                           bg="#243F5C", fg="white",
+                           insertbackground="white",
+                           relief="flat", bd=6)
 entry_wiek_max.insert(0, "59")
-entry_wiek_max.grid(row=1, column=2, padx=5)
+entry_wiek_max.pack(padx=16, pady=(0, 8), fill="x")
 
+# Wybór płci
+tk.Label(sidebar, text="Płeć:",
+         font=("Helvetica", 9, "bold"),
+         bg=KOLOR_SIDEBAR, fg="#BDD7EE").pack(padx=20, pady=(4, 2), anchor="w")
 var_plec = tk.StringVar(value="Wszyscy")
-option_plec = tk.OptionMenu(frame_form, var_plec, "Wszyscy", "Male", "Female")
-option_plec.config(bg="white", relief="flat", width=8)
-option_plec.grid(row=1, column=3, padx=5)
+option_plec = tk.OptionMenu(sidebar, var_plec, "Wszyscy", "Male", "Female")
+option_plec.config(bg="#243F5C", fg="white", relief="flat",
+                   font=("Helvetica", 10), width=14,
+                   activebackground="#2E86C1",
+                   highlightthickness=0)
+option_plec["menu"].config(bg="#243F5C", fg="white")
+option_plec.pack(padx=16, pady=(0, 14), fill="x")
 
-btn_filtruj = tk.Button(
-    frame_form, text="Filtruj i analizuj", command=filtruj_dane,
-    bg="#2ecc71", fg="white", relief="flat", padx=12, pady=8
-)
-btn_filtruj.grid(row=1, column=4, padx=6)
+tk.Frame(sidebar, bg="#2E5F8A", height=1).pack(fill="x", padx=16, pady=4)
 
-btn_porownaj = tk.Button(
-    frame_form, text="Porównaj grupy", command=porownaj_grupy,
-    bg="#e67e22", fg="white", relief="flat", padx=12, pady=8
-)
-btn_porownaj.grid(row=1, column=5, padx=6)
+# Przycisk filtruj
+btn_filtruj = tk.Button(sidebar, text="🔍  Filtruj i analizuj",
+                         command=filtruj_dane,
+                         bg="#27AE60", fg="white",
+                         relief="flat", bd=0,
+                         font=("Helvetica", 10, "bold"),
+                         padx=14, pady=10,
+                         cursor="hand2",
+                         activebackground="#1E8449",
+                         activeforeground="white")
+btn_filtruj.pack(fill="x", padx=16, pady=(10, 6))
 
-btn_eksport = tk.Button(
-    frame_form, text="Eksportuj raport", command=eksportuj_raport,
-    bg="#c0392b", fg="white", relief="flat", padx=12, pady=8
-)
-btn_eksport.grid(row=1, column=6, padx=6)
+# Status
+label_status = tk.Label(sidebar, text="",
+                          font=("Helvetica", 8),
+                          bg=KOLOR_SIDEBAR, fg="#7FB3D3",
+                          wraplength=190)
+label_status.pack(padx=16, pady=4, anchor="w")
 
-label_status = tk.Label(root, text="", bg="#ecf0f1", font=("Arial", 9))
-label_status.pack()
+# Wersja programu (na dole)
+tk.Label(sidebar, text="v1.0  |  Python + tkinter",
+         font=("Helvetica", 7),
+         bg=KOLOR_SIDEBAR, fg="#4A7FA8").pack(side="bottom", pady=14)
 
-# PANEL STATYSTYK
-panel_statystyki = tk.Frame(root, bg="white", bd=1, relief="solid")
-panel_statystyki.pack(pady=8, padx=50, fill="x")
 
-tk.Label(panel_statystyki, text="Panel statystyk",
-         font=("Arial", 14, "bold"), bg="white").pack(pady=5)
+# Zawartość
+content = tk.Frame(main_frame, bg=KOLOR_TLO)
+content.pack(side="left", fill="both", expand=True)
 
-label_wyniki = tk.Label(panel_statystyki, text="", font=("Arial", 12), bg="white")
-label_wyniki.pack(pady=8)
+# STYL ZAKŁADEK
+style = ttk.Style()
+style.theme_use("default")
+style.configure("Medical.TNotebook",
+                background=KOLOR_TLO,
+                borderwidth=0)
+style.configure("Medical.TNotebook.Tab",
+                background="#D6E4F0",
+                foreground=KOLOR_TEKST,
+                font=("Helvetica", 10, "bold"),
+                padding=[20, 8],
+                borderwidth=0)
+style.map("Medical.TNotebook.Tab",
+          background=[("selected", KOLOR_ACCENT)],
+          foreground=[("selected", "white")])
 
-# PANEL WYKRESÓW
-frame_wykresy = tk.Frame(root, bg="#ecf0f1")
-frame_wykresy.pack(fill="both", expand=True, padx=40, pady=10)
+notebook = ttk.Notebook(content, style="Medical.TNotebook")
+notebook.pack(fill="both", expand=True, padx=16, pady=12)
+
+# ZAKŁADKA 1: ANALIZA
+tab_analiza = tk.Frame(notebook, bg=KOLOR_TLO)
+notebook.add(tab_analiza, text="  📊  Analiza  ")
+
+# Karty statystyk
+frame_karty = tk.Frame(tab_analiza, bg=KOLOR_TLO)
+frame_karty.pack(fill="x", padx=10, pady=(12, 8))
+
+def zrob_karte(parent, tytul, domyslna_val, kolor_tytul=KOLOR_SZARY):
+    karta = tk.Frame(parent, bg=KOLOR_KARTA,
+                     relief="flat", bd=0,
+                     highlightbackground=KOLOR_BORDER,
+                     highlightthickness=1)
+    karta.pack(side="left", fill="both", expand=True, padx=6, pady=4)
+    tk.Label(karta, text=tytul,
+             font=("Helvetica", 8, "bold"),
+             bg=KOLOR_KARTA, fg=kolor_tytul).pack(pady=(10, 2))
+    val_label = tk.Label(karta, text=domyslna_val,
+                          font=("Helvetica", 18, "bold"),
+                          bg=KOLOR_KARTA, fg=KOLOR_TEKST)
+    val_label.pack(pady=(0, 10))
+    return val_label
+
+karta_liczba_val = zrob_karte(frame_karty, "LICZBA PACJENTÓW", "—")
+karta_kroki_val  = zrob_karte(frame_karty, "ŚR. KROKÓW / DZIEŃ", "—")
+karta_sen_val    = zrob_karte(frame_karty, "ŚR. JAKOŚĆ SNU", "—")
+karta_status_val = zrob_karte(frame_karty, "STATUS", "—")
+
+# Wykresy analizy
+frame_wykres_analiza = tk.Frame(tab_analiza, bg=KOLOR_TLO)
+frame_wykres_analiza.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+
+# ZAKŁADKA 2: PORÓWNANIE GRUP
+tab_porownanie = tk.Frame(notebook, bg=KOLOR_TLO)
+notebook.add(tab_porownanie, text="  👥  Porównanie grup  ")
+
+btn_porownaj = tk.Button(tab_porownanie,
+                          text="▶  Wygeneruj porównanie grup",
+                          command=porownaj_grupy,
+                          bg=KOLOR_ACCENT, fg="white",
+                          relief="flat", bd=0,
+                          font=("Helvetica", 10, "bold"),
+                          padx=20, pady=10,
+                          cursor="hand2",
+                          activebackground=KOLOR_BTN_HOVER)
+btn_porownaj.pack(pady=(16, 8))
+
+tk.Label(tab_porownanie,
+         text="Porównuje kroki i jakość snu między grupami wiekowymi, płcią i kategoriami BMI",
+         font=("Helvetica", 9), bg=KOLOR_TLO, fg=KOLOR_SZARY).pack()
+
+frame_wykres_porownanie = tk.Frame(tab_porownanie, bg=KOLOR_TLO)
+frame_wykres_porownanie.pack(fill="both", expand=True, padx=10, pady=(8, 10))
+
+# ZAKŁADKA 3: EKSPORT
+tab_eksport = tk.Frame(notebook, bg=KOLOR_TLO)
+notebook.add(tab_eksport, text="  💾  Eksport  ")
+
+frame_eksport_center = tk.Frame(tab_eksport, bg=KOLOR_TLO)
+frame_eksport_center.pack(expand=True)
+
+tk.Label(frame_eksport_center,
+         text="Eksport raportu",
+         font=("Helvetica", 16, "bold"),
+         bg=KOLOR_TLO, fg=KOLOR_TEKST).pack(pady=(40, 6))
+
+tk.Label(frame_eksport_center,
+         text="Zapisuje przefiltrowane dane do pliku CSV\noraz generuje raport PDF z wykresami i statystykami.",
+         font=("Helvetica", 10),
+         bg=KOLOR_TLO, fg=KOLOR_SZARY,
+         justify="center").pack(pady=(0, 24))
+
+# Infobox
+info_box = tk.Frame(frame_eksport_center, bg="#EBF5FB",
+                     highlightbackground=KOLOR_BORDER,
+                     highlightthickness=1)
+info_box.pack(pady=(0, 24), padx=40, fill="x")
+
+tk.Label(info_box,
+         text="ℹ️   Przed eksportem ustaw filtry w pasku bocznym\ni kliknij 'Filtruj i analizuj' w zakładce Analiza.",
+         font=("Helvetica", 9),
+         bg="#EBF5FB", fg="#1B4F72",
+         justify="left").pack(padx=16, pady=12)
+
+btn_eksport = tk.Button(frame_eksport_center,
+                         text="💾  Eksportuj CSV + PDF",
+                         command=eksportuj_raport,
+                         bg="#E74C3C", fg="white",
+                         relief="flat", bd=0,
+                         font=("Helvetica", 12, "bold"),
+                         padx=32, pady=14,
+                         cursor="hand2",
+                         activebackground="#C0392B")
+btn_eksport.pack()
+
+label_status_eksport = tk.Label(frame_eksport_center, text="",
+                                  font=("Helvetica", 10),
+                                  bg=KOLOR_TLO, fg="#27AE60")
+label_status_eksport.pack(pady=16)
 
 root.mainloop()
