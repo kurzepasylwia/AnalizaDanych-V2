@@ -94,8 +94,9 @@ def wczytaj_plik():
     sciezka = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
     if sciezka:
         df = pd.read_csv(sciezka)
-        label_status.config(text="✅ Plik wczytany poprawnie", fg="#27ae60")
-
+        nazwa = os.path.basename(sciezka)
+        label_plik.config(text=f"📂 {nazwa}", fg="#27AE60")
+        label_status.config(text="✅ Plik wczytany poprawnie", fg="#27AE60")
 
 
 # POMOCNICZA: filtrowanie danych
@@ -109,9 +110,11 @@ def pobierz_przefiltrowane():
     wiek_max = int(entry_wiek_max.get())
     wynik = df[(df["Age"] >= wiek_min) & (df["Age"] <= wiek_max)].copy()
 
+    # Tłumaczenie płci na polski
+    tlumaczenie_plci = {"Kobieta": "Female", "Mężczyzna": "Male"}
     wybrana_plec = var_plec.get()
     if wybrana_plec != "Wszyscy":
-        wynik = wynik[wynik["Gender"] == wybrana_plec]
+        wynik = wynik[wynik["Gender"] == tlumaczenie_plci.get(wybrana_plec, wybrana_plec)]
 
     # Tłumaczenie BMI na polski
     wynik["BMI Category"] = wynik["BMI Category"].replace({
@@ -184,11 +187,14 @@ def rysuj_wykresy_glowne(przefiltrowane, kontener):
     kolory_bmi = {"Prawidłowa": "#27AE60", "Nadwaga": "#F39C12", "Otyłość": "#E74C3C"}
 
     # Wykres 1: Scatter kroków vs jakość snu
+    tlumaczenie_plci = {"Male": "Mężczyzna", "Female": "Kobieta"}
+
     for plec in przefiltrowane["Gender"].unique():
         dane = przefiltrowane[przefiltrowane["Gender"] == plec]
         axs[0].scatter(dane["Daily Steps"], dane["Quality of Sleep"],
-                       color=kolory.get(plec, "#999"),
-                       alpha=0.7, s=48, edgecolors="white", linewidths=0.5, label=plec)
+                    color=kolory.get(plec, "#999"),
+                    alpha=0.7, s=48, edgecolors="white", linewidths=0.5,
+                    label=tlumaczenie_plci.get(plec, plec)) 
     z = np.polyfit(przefiltrowane["Daily Steps"], przefiltrowane["Quality of Sleep"], 1)
     p = np.poly1d(z)
     x_s = np.sort(przefiltrowane["Daily Steps"])
@@ -202,7 +208,7 @@ def rysuj_wykresy_glowne(przefiltrowane, kontener):
     axs[0].grid(True, alpha=0.25, linestyle="--", color=KOLOR_BORDER)
 
     # Wykres 2: Średnia kroków wg BMI
-    kolejnosc  = [k for k in ["Prawdiłowa", "Nadwaga", "Otyłość"]
+    kolejnosc  = [k for k in ["Prawidłowa", "Nadwaga", "Otyłość"]
                   if k in przefiltrowane["BMI Category"].unique()]
     srednie_bmi = przefiltrowane.groupby("BMI Category")["Daily Steps"].mean().reindex(kolejnosc)
     bars = axs[1].bar(srednie_bmi.index, srednie_bmi.values,
@@ -249,7 +255,12 @@ def porownaj_grupy():
         return
 
     dane = df.copy()
-    dane["BMI Category"] = dane["BMI Category"].replace({"Normal Weight": "Normal"})
+    dane["BMI Category"] = dane["BMI Category"].replace({
+    "Normal Weight": "Prawidłowa",
+    "Normal":        "Prawidłowa",
+    "Overweight":    "Nadwaga",
+    "Obese":         "Otyłość"
+    })
 
     for widget in frame_wykres_porownanie.winfo_children():
         widget.destroy()
@@ -268,9 +279,9 @@ def porownaj_grupy():
                             observed=True)["Daily Steps"].mean().unstack()
     x = np.arange(len(srednie.index))
     axs[0].bar(x - szerokosc/2, srednie.get("Male",   [0]*len(x)),
-               szerokosc, label="Male",   color="#2E86C1", edgecolor="white")
+               szerokosc, label="Mężczyzna",   color="#2E86C1", edgecolor="white")
     axs[0].bar(x + szerokosc/2, srednie.get("Female", [0]*len(x)),
-               szerokosc, label="Female", color="#E05C7A", edgecolor="white")
+               szerokosc, label="Kobieta", color="#E05C7A", edgecolor="white")
     axs[0].set_xticks(x)
     axs[0].set_xticklabels(srednie.index, fontsize=8)
     axs[0].set_title("Kroki wg grupy wiekowej i płci",
@@ -281,7 +292,7 @@ def porownaj_grupy():
     # Wykres 2: Boxplot jakości snu wg płci
     grupy = [dane[dane["Gender"] == p]["Quality of Sleep"].dropna()
              for p in ["Male", "Female"]]
-    bp = axs[1].boxplot(grupy, tick_labels=["Male", "Female"], patch_artist=True,
+    bp = axs[1].boxplot(grupy, tick_labels=["Mężczyzna", "Kobieta"], patch_artist=True,
                         medianprops=dict(color="white", linewidth=2.5),
                         whiskerprops=dict(color=KOLOR_SZARY),
                         capprops=dict(color=KOLOR_SZARY))
@@ -300,9 +311,9 @@ def porownaj_grupy():
     bmi_plec    = bmi_plec.reindex(kolejnosc)
     x2 = np.arange(len(kolejnosc))
     axs[2].bar(x2 - szerokosc/2, bmi_plec.get("Male",   [0]*len(x2)),
-               szerokosc, label="Male",   color="#2E86C1", edgecolor="white")
+               szerokosc, label="Mężczyzna",   color="#2E86C1", edgecolor="white")
     axs[2].bar(x2 + szerokosc/2, bmi_plec.get("Female", [0]*len(x2)),
-               szerokosc, label="Female", color="#E05C7A", edgecolor="white")
+               szerokosc, label="Kobieta", color="#E05C7A", edgecolor="white")
     axs[2].set_xticks(x2)
     axs[2].set_xticklabels(kolejnosc, fontsize=9)
     axs[2].set_title("Kroki wg BMI i płci",
@@ -539,7 +550,7 @@ style_combo.map("Sidebar.TCombobox",
 
 var_plec = tk.StringVar(value="Wszyscy")
 option_plec = ttk.Combobox(sidebar, textvariable=var_plec,
-                            values=["Wszyscy", "Male", "Female"],
+                            values=["Wszyscy", "Mężczyzna", "Kobieta"],
                             state="readonly",
                             style="Sidebar.TCombobox",
                             font=("Helvetica", 10))
@@ -549,7 +560,7 @@ option_plec.bind("<<ComboboxSelected>>", lambda e: option_plec.selection_clear()
 tk.Frame(sidebar, bg="#2E5F8A", height=1).pack(fill="x", padx=16, pady=4)
 
 # Przycisk filtruj
-btn_filtruj = zrob_przycisk(sidebar, "🔍  Filtruj i analizuj",
+btn_filtruj = zrob_przycisk(sidebar, "🔍 Filtruj i analizuj",
                               filtruj_dane, bg=KOLOR_ZIELONY)
 btn_filtruj.pack(fill="x", padx=16, pady=(10, 6))
 
@@ -559,18 +570,6 @@ label_status = tk.Label(sidebar, text="",
                           wraplength=190)
 label_status.pack(padx=16, pady=4, anchor="w")
 
-tk.Label(sidebar, text="v1.0  |  Python + tkinter",
-         font=("Helvetica", 7),
-         bg=KOLOR_SIDEBAR, fg="#4A7FA8").pack(side="bottom", pady=14)
-
-# Status
-label_status = tk.Label(sidebar, text="",
-                          font=("Helvetica", 8),
-                          bg=KOLOR_SIDEBAR, fg="#7FB3D3",
-                          wraplength=190)
-label_status.pack(padx=16, pady=4, anchor="w")
-
-# Wersja programu (na dole)
 tk.Label(sidebar, text="v1.0  |  Python + tkinter",
          font=("Helvetica", 7),
          bg=KOLOR_SIDEBAR, fg="#4A7FA8").pack(side="bottom", pady=14)
@@ -601,7 +600,7 @@ notebook.pack(fill="both", expand=True, padx=16, pady=12)
 
 # ZAKŁADKA 1: ANALIZA
 tab_analiza = tk.Frame(notebook, bg=KOLOR_TLO)
-notebook.add(tab_analiza, text="  📊  Analiza  ")
+notebook.add(tab_analiza, text="  📊 Analiza  ")
 
 # Karty statystyk
 frame_karty = tk.Frame(tab_analiza, bg=KOLOR_TLO)
@@ -633,7 +632,7 @@ frame_wykres_analiza.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
 # ZAKŁADKA 2: PORÓWNANIE GRUP
 tab_porownanie = tk.Frame(notebook, bg=KOLOR_TLO)
-notebook.add(tab_porownanie, text="  👥  Porównanie grup  ")
+notebook.add(tab_porownanie, text="  👥 Porównanie grup  ")
 
 btn_porownaj = zrob_przycisk(tab_porownanie, "▶  Wygeneruj porównanie grup",
                               porownaj_grupy, bg=KOLOR_ACCENT,
@@ -672,12 +671,12 @@ info_box = tk.Frame(frame_eksport_center, bg="#EBF5FB",
 info_box.pack(pady=(0, 24), padx=40, fill="x")
 
 tk.Label(info_box,
-         text="ℹ️   Przed eksportem ustaw filtry w pasku bocznym\ni kliknij 'Filtruj i analizuj' w zakładce Analiza.",
+         text="ℹ️ Przed eksportem ustaw filtry w pasku bocznym\ni kliknij 'Filtruj i analizuj' w zakładce Analiza.",
          font=("Helvetica", 9),
          bg="#EBF5FB", fg="#1B4F72",
          justify="left").pack(padx=16, pady=12)
 
-btn_eksport = zrob_przycisk(frame_eksport_center, "💾  Eksportuj CSV + PDF",
+btn_eksport = zrob_przycisk(frame_eksport_center, "💾 Eksportuj CSV + PDF",
                              eksportuj_raport, bg=KOLOR_CZERWONY,
                              font_size=12, padx=32, pady=14)
 btn_eksport.pack()
