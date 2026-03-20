@@ -110,4 +110,5 @@ Zbiór zawiera **374 rekordy** z informacjami o pacjentach:
 
 ## 👩‍💻 Autorka
 
-Projekt zrealizowany w ramach zajęć z programowania w Pythonie - Sylwia Kurzępa.
+Projekt zrealizowany w ramach zajęć na studiach podyplomowych "Analiza danych biologiczno-medycznych"
+ - Autorka: Sylwia Kurzępa
