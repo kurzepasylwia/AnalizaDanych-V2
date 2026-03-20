@@ -686,4 +686,5 @@ label_status_eksport = tk.Label(frame_eksport_center, text="",
                                   bg=KOLOR_TLO, fg=KOLOR_ZIELONY)
 label_status_eksport.pack(pady=16)
 
+root.protocol("WM_DELETE_WINDOW", root.quit)
 root.mainloop()
